@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>麻將 · Discard Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --lacquer:#14110E;
+    --lacquer-2:#1C1814;
+    --felt:#0F5A45;
+    --felt-dk:#0A4536;
+    --felt-edge:#073026;
+    --bone:#F4EEE0;
+    --bone-edge:#DBCFB6;
+    --bone-shadow:#B7A98a;
+    --ink:#26211B;
+    --cinnabar:#C5402B;
+    --indigo:#2E5A9E;
+    --jade:#2E7D55;
+    --jade-bright:#39C08A;
+    --gold:#CBA14B;
+    --slate:#3C4856;
+    --paper:#EDE6D6;
+    --muted:#9A8F7C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #241E18 0%, var(--lacquer) 60%) fixed;
+    color:var(--paper);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:18px 16px 60px;}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .han{
+    font-family:'Noto Sans TC',sans-serif;font-weight:900;font-size:34px;line-height:1;
+    color:var(--bone);
+    text-shadow:0 2px 0 #00000040;
+  }
+  .brand .ttl{display:flex;flex-direction:column;}
+  .brand h1{font-size:17px;letter-spacing:.14em;text-transform:uppercase;margin:0;font-weight:700;}
+  .brand p{margin:2px 0 0;font-size:12px;color:var(--muted);letter-spacing:.04em;}
+  .enginepill{
+    font-size:11px;letter-spacing:.08em;border:1px solid #ffffff1f;border-radius:999px;
+    padding:4px 9px;color:var(--jade-bright);display:inline-flex;gap:6px;align-items:center;
+  }
+  .enginepill.bad{color:var(--cinnabar);}
+  .enginepill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+  /* ---------- scoreboard ---------- */
+  .scorebar{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:#ffffff12;border:1px solid #ffffff14;border-radius:12px;overflow:hidden;margin-bottom:18px;
+  }
+  .stat{background:var(--lacquer-2);padding:11px 12px;text-align:center;}
+  .stat .num{font-size:22px;font-weight:700;letter-spacing:.02em;}
+  .stat .num .sub{font-size:13px;color:var(--muted);font-weight:500;}
+  .stat .lab{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+  .stat .num.good{color:var(--jade-bright);}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+  .coach{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--paper);cursor:pointer;user-select:none;}
+  .switch{width:42px;height:24px;border-radius:999px;background:#ffffff1f;position:relative;transition:background .18s;flex:none;}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--bone);transition:transform .18s;}
+  .coach.on .switch{background:var(--jade);}
+  .coach.on .switch::after{transform:translateX(18px);}
+  .coach .hint{font-size:11px;color:var(--muted);}
+
+  /* ---------- felt table ---------- */
+  .table{
+    background:
+      radial-gradient(120% 140% at 50% 0%, var(--felt) 0%, var(--felt-dk) 70%, var(--felt-edge) 100%);
+    border:1px solid #00000055;
+    border-radius:18px;
+    padding:18px 16px 16px;
+    box-shadow:inset 0 2px 22px #00000055, 0 14px 40px -22px #000000aa;
+  }
+  .status{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .status .dist{font-size:15px;font-weight:500;color:#EAF6EF;}
+  .status .dist b{font-family:'Noto Sans TC',sans-serif;font-weight:700;color:#fff;}
+  .status .dist .ready{color:var(--gold);font-weight:700;letter-spacing:.04em;}
+  .status .prompt{font-size:12px;color:#BfeBd8;letter-spacing:.02em;}
+
+  .rack{display:flex;flex-wrap:wrap;gap:7px;align-items:flex-end;}
+  .draw-sep{width:1px;align-self:stretch;background:#ffffff2e;margin:2px 4px;}
+
+  /* ---------- tiles ---------- */
+  .tile{
+    --w:clamp(38px,8.4vw,50px);
+    width:var(--w);height:calc(var(--w)*1.36);
+    background:linear-gradient(#FBF7EC,var(--bone));
+    border:1px solid var(--bone-edge);
+    border-bottom:3px solid var(--bone-shadow);
+    border-radius:8px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;position:relative;padding:0;
+    box-shadow:0 4px 8px -4px #00000066;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .2s;
+    font-family:'Noto Sans TC',sans-serif;line-height:1;color:var(--ink);
+  }
+  .tile:disabled{cursor:default;}
+  .rack.choose .tile:hover{transform:translateY(-7px);box-shadow:0 12px 16px -8px #00000088;}
+  .rack.choose .tile:focus-visible{outline:3px solid var(--gold);outline-offset:2px;transform:translateY(-7px);}
+  .tile .num{font-size:calc(var(--w)*0.52);font-weight:700;margin-top:2px;}
+  .tile .suit{font-size:calc(var(--w)*0.30);font-weight:700;margin-top:1px;}
+  .tile.honor .big{font-size:calc(var(--w)*0.62);font-weight:900;}
+  .tile.s-man .suit{color:var(--cinnabar);}
+  .tile.s-pin .suit{color:var(--indigo);}
+  .tile.s-sou .suit{color:var(--jade);}
+  .tile.h-wind .big{color:var(--slate);}
+  .tile.h-red .big{color:var(--cinnabar);}
+  .tile.h-green .big{color:var(--jade);}
+  .tile.h-white .big{color:var(--slate);border:1.5px solid var(--slate);border-radius:4px;padding:2px 5px;font-size:calc(var(--w)*0.46);}
+
+  .tile.drawn{box-shadow:0 0 0 2px var(--gold), 0 8px 14px -6px #000000aa;transform:translateY(-4px);}
+  .tile.drawn::after{content:"抽";position:absolute;top:-9px;right:-6px;font-size:10px;font-weight:700;
+    background:var(--gold);color:#241c08;border-radius:999px;padding:1px 5px;font-family:'Noto Sans TC';}
+  .tile.hintglow{box-shadow:0 0 0 2px var(--jade-bright), 0 0 14px -2px var(--jade-bright);}
+  .tile.picked{opacity:.35;transform:translateY(6px) scale(.94);}
+
+  /* ---------- feedback ---------- */
+  .feedback{margin-top:16px;border-radius:14px;padding:14px 15px;border:1px solid #ffffff1c;background:var(--lacquer-2);
+    animation:rise .22s ease;}
+  @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .verdict{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700;letter-spacing:.02em;}
+  .verdict .tag{font-family:'Noto Sans TC';font-size:13px;border-radius:6px;padding:2px 7px;}
+  .v-opt{color:var(--jade-bright);} .v-opt .tag{background:#2e7d5533;color:var(--jade-bright);}
+  .v-ok{color:var(--gold);} .v-ok .tag{background:#cba14b2e;color:var(--gold);}
+  .v-bad{color:#E8765F;} .v-bad .tag{background:#c5402b30;color:#E8765F;}
+  .fb-body{font-size:13.5px;color:#D8D0C0;margin-top:9px;line-height:1.5;}
+  .fb-body .pill{display:inline-flex;align-items:center;gap:5px;background:#ffffff10;border-radius:6px;padding:2px 7px;margin:0 1px;font-weight:500;}
+  .fb-body .han{font-family:'Noto Sans TC';font-weight:700;color:var(--bone);}
+  .fb-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted);}
+  .fb-row b{color:var(--paper);font-weight:600;}
+  .fb-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  button.btn{
+    font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.03em;
+    border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid transparent;transition:filter .15s,transform .1s;
+  }
+  button.btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--jade);color:#04140d;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;border-color:#ffffff2a;color:var(--paper);}
+  .btn-ghost:hover{background:#ffffff10;}
+  .win-banner{font-family:'Noto Sans TC';font-weight:900;color:var(--gold);font-size:20px;letter-spacing:.06em;}
+
+  /* ---------- learn drawers ---------- */
+  .learn{margin-top:22px;display:grid;gap:10px;}
+  details{background:var(--lacquer-2);border:1px solid #ffffff12;border-radius:12px;overflow:hidden;}
+  summary{cursor:pointer;padding:13px 15px;font-size:13.5px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  summary::-webkit-details-marker{display:none;}
+  summary .chev{color:var(--muted);transition:transform .2s;}
+  details[open] summary .chev{transform:rotate(90deg);}
+  .drawer{padding:0 15px 15px;font-size:13px;color:#CFC7B6;line-height:1.6;}
+  .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px;margin-top:6px;}
+  .legitem{display:flex;align-items:center;gap:9px;background:#ffffff09;border-radius:9px;padding:7px 9px;}
+  .legitem .mini{font-family:'Noto Sans TC';font-weight:900;font-size:15px;width:22px;text-align:center;}
+  .legitem small{font-size:11px;color:var(--muted);display:block;}
+  .legitem .name{font-size:12.5px;}
+  .c-man{color:var(--cinnabar);} .c-pin{color:var(--indigo);} .c-sou{color:var(--jade);} .c-slate{color:var(--slate);}
+
+  footer{margin-top:24px;font-size:11.5px;color:var(--muted);line-height:1.6;border-top:1px solid #ffffff12;padding-top:14px;}
+  footer b{color:var(--paper);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="han">麻將</span>
+      <div class="ttl">
+        <h1>Discard Trainer</h1>
+        <p>Taiwanese 16-tile · efficiency drills</p>
+      </div>
+    </div>
+    <span id="engine" class="enginepill"><span class="dot"></span><span id="engineTxt">checking engine…</span></span>
+  </header>
+
+  <div class="scorebar">
+    <div class="stat"><div id="accuracy" class="num good">—</div><div class="lab">Optimal rate</div></div>
+    <div class="stat"><div id="streak" class="num">0</div><div class="lab">Current streak</div></div>
+    <div class="stat"><div id="hands" class="num">0</div><div class="lab">Decisions</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div id="coach" class="coach on" role="switch" aria-checked="true" tabindex="0">
+      <span class="switch"></span>
+      <span>Coach mode</span>
+      <span class="hint">— highlights the best tile before you choose</span>
+    </div>
+  </div>
+
+  <div class="table">
+    <div class="status">
+      <div id="dist" class="dist"></div>
+      <div id="prompt" class="prompt">Tap a tile to discard it.</div>
+    </div>
+    <div id="rack" class="rack choose"></div>
+    <div id="feedback"></div>
+  </div>
+
+  <div class="learn">
+    <details>
+      <summary>The tiles at a glance <span class="chev">›</span></summary>
+      <div class="drawer">
+        Three number suits (each 1–9) plus honor tiles. A winning hand is <b>five sets + one pair</b> from 16 tiles
+        (a "set" is three of a kind, or three in a run within one suit). Honors can't form runs.
+        <div class="legend">
+          <div class="legitem"><span class="mini c-man">萬</span><span class="name">Characters<small>wàn · "man"</small></span></div>
+          <div class="legitem"><span class="mini c-pin">筒</span><span class="name">Dots<small>tǒng · "pin"</small></span></div>
+          <div class="legitem"><span class="mini c-sou">條</span><span class="name">Bamboo<small>tiáo · "sou"</small></span></div>
+          <div class="legitem"><span class="mini c-slate">東南西北</span><span class="name">Winds<small>E · S · W · N</small></span></div>
+          <div class="legitem"><span class="mini" style="color:var(--cinnabar)">中</span><span class="name">Red dragon</span></div>
+          <div class="legitem"><span class="mini" style="color:var(--jade)">發</span><span class="name">Green dragon</span></div>
+          <div class="legitem"><span class="mini c-slate">白</span><span class="name">White dragon</span></div>
+        </div>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:12px;">Flower tiles aren't shown here — you never <i>choose</i> to discard them (they're set aside and auto-replaced), so they're not part of discard practice.</p>
+      </div>
+    </details>
+    <details>
+      <summary>What "tiles from ready" means <span class="chev">›</span></summary>
+      <div class="drawer">
+        Your distance to a finished hand is measured in tiles. <b>Ready (聽牌 / tenpai)</b> means one tile away from winning.
+        "2 from ready" means you still need two useful draws. Good discarding does two things at once:
+        keep that number as <b>low</b> as possible, and keep your hand <b>wide</b> — the more different tiles that can help you,
+        the faster the right one shows up. The coach scores both: which discard keeps you closest, and which leaves the most winning tiles live.
+        <p style="margin:10px 0 0;color:var(--muted);font-size:12px;">This module trains pure efficiency. It doesn't yet weigh hand <i>value</i> (台) or <i>defense</i> against opponents — those are separate skills we'll build next.</p>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    A <b>practice</b> tool: drill it to build instincts you'll use at a real table on your own. It trains
+    <b>tile efficiency</b> (shanten + ukeire) with deterministic math, and self-checks its engine on load.
+    Stats reset when you reload. Built around standard 16-tile Taiwanese structure (5 sets + 1 pair).
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   TILE MODEL
+   index 0-8 man (萬) 1-9 | 9-17 pin (筒) 1-9 | 18-26 sou (條) 1-9
+   27 東 28 南 29 西 30 北 31 中 32 發 33 白
+   ============================================================ */
+const HONORS = ['東','南','西','北','中','發','白'];
+function tileInfo(i){
+  if(i<9)  return {kind:'man', rank:i+1, suit:'萬', cls:'s-man'};
+  if(i<18) return {kind:'pin', rank:i-8, suit:'筒', cls:'s-pin'};
+  if(i<27) return {kind:'sou', rank:i-17, suit:'條', cls:'s-sou'};
+  const h=i-27, g=HONORS[h];
+  let cls = h<4 ? 'h-wind' : (g==='中'?'h-red':(g==='發'?'h-green':'h-white'));
+  return {kind:'honor', glyph:g, cls};
+}
+function tileName(i){ const t=tileInfo(i); return t.kind==='honor'? t.glyph : (t.rank+t.suit); }
+function tileAria(i){ const t=tileInfo(i); if(t.kind==='honor')return 'discard '+t.glyph;
+  const names={man:'characters',pin:'dots',sou:'bamboo'}; return 'discard '+t.rank+' '+names[t.kind]; }
+
+/* ============================================================
+   SHANTEN / UKEIRE ENGINE  (standard form: 5 sets + 1 pair)
+   ============================================================ */
+// Per-suit decomposition -> Map(meldCount -> maxPartials)
+function decomposeSuit(counts, allowRuns){
+  const best = new Map();
+  function record(m,p){ if(!best.has(m)||p>best.get(m)) best.set(m,p); }
+  const a = counts.slice();
+  function rec(i,m,p){
+    while(i<a.length && a[i]===0) i++;
+    if(i>=a.length){ record(m,p); return; }
+    if(p<6){
+      // triplet
+      if(a[i]>=3){ a[i]-=3; rec(i,m+1,p); a[i]+=3; }
+      // run
+      if(allowRuns && i+2<a.length && a[i]&&a[i+1]&&a[i+2]){ a[i]--;a[i+1]--;a[i+2]--; rec(i,m+1,p); a[i]++;a[i+1]++;a[i+2]++; }
+      // pair (partial)
+      if(a[i]>=2){ a[i]-=2; rec(i,m,p+1); a[i]+=2; }
+      // adjacent partial
+      if(allowRuns && i+1<a.length && a[i]&&a[i+1]){ a[i]--;a[i+1]--; rec(i,m,p+1); a[i]++;a[i+1]++; }
+      // gap partial
+      if(allowRuns && i+2<a.length && a[i]&&a[i+2]){ a[i]--;a[i+2]--; rec(i,m,p+1); a[i]++;a[i+2]++; }
+    }
+    // floater
+    a[i]--; rec(i,m,p); a[i]++;
+  }
+  rec(0,0,0);
+  return best; // Map
+}
+function convolve(acc, g){
+  const out = new Map();
+  for(const [m1,p1] of acc) for(const [m2,p2] of g){
+    const m=m1+m2, p=p1+p2;
+    if(!out.has(m)||p>out.get(m)) out.set(m,p);
+  }
+  return out;
+}
+function bestMeldPartial(c){
+  const groups=[c.slice(0,9),c.slice(9,18),c.slice(18,27),c.slice(27,34)];
+  const allow=[true,true,true,false];
+  let acc=new Map([[0,0]]);
+  for(let g=0;g<4;g++) acc=convolve(acc, decomposeSuit(groups[g],allow[g]));
+  return acc;
+}
+const _memo=new Map();
+function shanten(c){
+  const key=c.join(',');
+  if(_memo.has(key)) return _memo.get(key);
+  let best=99;
+  // with a head (try each pair)
+  for(let i=0;i<34;i++){
+    if(c[i]>=2){
+      c[i]-=2;
+      const combos=bestMeldPartial(c);
+      c[i]+=2;
+      for(const [m,p0] of combos){
+        let mm=m,pp=p0;
+        if(mm>5){mm=5;pp=0;}
+        if(mm+pp>5) pp=5-mm;
+        const sh=10-2*mm-pp-1;
+        if(sh<best) best=sh;
+      }
+    }
+  }
+  // headless
+  {
+    const combos=bestMeldPartial(c);
+    for(const [m,p0] of combos){
+      let mm=m,pp=p0;
+      if(mm>5){mm=5;pp=0;}
+      if(mm+pp>5) pp=5-mm;
+      const sh=10-2*mm-pp;
+      if(sh<best) best=sh;
+    }
+  }
+  _memo.set(key,best);
+  return best;
+}
+// outs that improve a 16-tile hand; returns total available copies + types
+function ukeire(c16){
+  const base=shanten(c16);
+  let total=0; const types=[];
+  for(let t=0;t<34;t++){
+    if(c16[t]>=4) continue;
+    c16[t]++;
+    let after=99;
+    for(let d=0;d<34;d++){ if(c16[d]>0){ c16[d]--; const s=shanten(c16); c16[d]++; if(s<after){after=s; if(after<base)break;} } }
+    c16[t]--;
+    if(after<base){ total+=(4-c16[t]); types.push(t); }
+  }
+  return {count:total, types};
+}
+// rank discards of a 17-tile hand
+function evaluate17(c17){
+  const cand=[];
+  for(let d=0;d<34;d++) if(c17[d]>0){ c17[d]--; cand.push({tile:d, sh:shanten(c17)}); c17[d]++; }
+  const minSh=Math.min(...cand.map(x=>x.sh));
+  cand.filter(x=>x.sh===minSh).forEach(x=>{ c17[x.tile]--; x.uke=ukeire(c17).count; c17[x.tile]++; });
+  const ranked=cand.filter(x=>x.sh===minSh).sort((a,b)=>b.uke-a.uke);
+  const bestUke=ranked[0].uke;
+  const bestTiles=ranked.filter(x=>x.uke===bestUke).map(x=>x.tile);
+  return {minSh, best:ranked[0], bestTiles, all:cand};
+}
+function infoForDiscard(c17, tile){
+  c17[tile]--; const sh=shanten(c17); const uke=ukeire(c17).count; c17[tile]++;
+  return {sh, uke};
+}
+
+/* ============================================================
+   SELF TEST
+   ============================================================ */
+(function selfTest(){
+  const z=()=>Array(34).fill(0);
+  // complete: man 123456789, pin 123456, sou99
+  let A=z(); for(let i=0;i<9;i++)A[i]=1; for(let i=9;i<15;i++)A[i]=1; A[26]=2;
+  // tenpai: same but sou9 single (16 tiles)
+  let B=z(); for(let i=0;i<9;i++)B[i]=1; for(let i=9;i<15;i++)B[i]=1; B[26]=1;
+  // 1-shanten: man 123456789, pin 123, pin5 pair, sou1 & sou9 floaters
+  let C=z(); for(let i=0;i<9;i++)C[i]=1; C[9]=1;C[10]=1;C[11]=1; C[13]=2; C[18]=1; C[26]=1;
+  const pass = shanten(A)===-1 && shanten(B)===0 && shanten(C)===1;
+  const el=document.getElementById('engine'), txt=document.getElementById('engineTxt');
+  if(pass){ txt.textContent='engine verified'; }
+  else { el.classList.add('bad'); txt.textContent='engine self-test FAILED'; }
+  console.log('self-test', {complete:shanten(A), tenpai:shanten(B), oneShanten:shanten(C), pass});
+})();
+
+/* ============================================================
+   GAME STATE + UI
+   ============================================================ */
+const S={ hand:[], drawn:null, pile:[], phase:'choose', coach:true,
+          correct:0, total:0, streak:0 };
+
+function counts(arr){ const c=Array(34).fill(0); arr.forEach(i=>c[i]++); return c; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function freshWall(){ const w=[]; for(let i=0;i<34;i++) for(let k=0;k<4;k++) w.push(i); return shuffle(w); }
+
+function newHand(){
+  let wall, hand;
+  for(let tries=0;tries<60;tries++){
+    wall=freshWall();
+    hand=wall.slice(0,16).sort((a,b)=>a-b);
+    const s=shanten(counts(hand));
+    if(s>=1 && s<=4){ break; }
+  }
+  S.pile = wall.slice(16);
+  S.hand = hand;
+  S.drawn = S.pile.shift();
+  S.phase='choose';
+  render();
+}
+
+function drawNext(){
+  if(S.pile.length===0){ newHand(); return; }
+  S.drawn = S.pile.shift();
+  S.phase='choose';
+  // win check on self-draw
+  const c=counts([...S.hand, S.drawn]);
+  if(shanten(c)===-1){ S.phase='win'; }
+  render();
+}
+
+function tileEl(idx, opts={}){
+  const t=tileInfo(idx);
+  const b=document.createElement('button');
+  b.className='tile '+t.cls+(t.kind==='honor'?' honor':'');
+  b.setAttribute('aria-label', tileAria(idx));
+  if(t.kind==='honor'){ b.innerHTML='<span class="big">'+t.glyph+'</span>'; }
+  else { b.innerHTML='<span class="num">'+t.rank+'</span><span class="suit">'+t.suit+'</span>'; }
+  if(opts.drawn) b.classList.add('drawn');
+  if(opts.hint) b.classList.add('hintglow');
+  if(opts.picked){ b.classList.add('picked'); b.disabled=true; }
+  if(opts.onpick && !opts.picked){ b.addEventListener('click',()=>opts.onpick(idx)); }
+  else if(!opts.onpick){ b.disabled=true; }
+  return b;
+}
+
+function distLabel(sh){
+  if(sh<=0) return '<span class="ready">Ready · 聽牌</span> — one tile from a win';
+  if(sh===1) return 'After your best discard: <b>1</b> from ready';
+  return 'After your best discard: <b>'+sh+'</b> from ready';
+}
+
+function render(){
+  // stats
+  document.getElementById('accuracy').textContent = S.total? Math.round(100*S.correct/S.total)+'%' : '—';
+  document.getElementById('streak').textContent = S.streak;
+  document.getElementById('hands').textContent = S.total;
+
+  const rack=document.getElementById('rack');
+  const fb=document.getElementById('feedback');
+  const dist=document.getElementById('dist');
+  const prompt=document.getElementById('prompt');
+  rack.innerHTML=''; fb.innerHTML='';
+
+  const full=[...S.hand, S.drawn];
+  const c17=counts(full);
+
+  if(S.phase==='win'){
+    rack.classList.remove('choose');
+    S.hand.forEach(i=>rack.appendChild(tileEl(i)));
+    rack.appendChild(Object.assign(document.createElement('div'),{className:'draw-sep'}));
+    rack.appendChild(tileEl(S.drawn,{drawn:true}));
+    dist.innerHTML='<span class="ready">自摸 · Self-draw win!</span>';
+    prompt.textContent='';
+    fb.innerHTML='<div class="feedback"><div class="win-banner">🀄 胡了 — you completed the hand!</div>'+
+      '<div class="fb-body">Five sets and a pair, drawn by your own hand. That last tile finished it.</div>'+
+      '<div class="fb-actions"><button class="btn btn-primary" onclick="newHand()">Deal a new hand</button></div></div>';
+    return;
+  }
+
+  // choose phase
+  rack.classList.add('choose');
+  const ev = evaluate17(c17);
+  dist.innerHTML = distLabel(ev.minSh);
+  prompt.textContent = S.coach ? 'Glowing tile = best discard. Tap any tile.' : 'Tap a tile to discard it.';
+
+  const hintSet = new Set(S.coach ? ev.bestTiles : []);
+  let hintUsed=new Set();
+  S.hand.forEach(i=>{
+    const showHint = hintSet.has(i) && !hintUsed.has(i);
+    if(showHint) hintUsed.add(i);
+    rack.appendChild(tileEl(i,{hint:showHint, onpick:onPick}));
+  });
+  rack.appendChild(Object.assign(document.createElement('div'),{className:'draw-sep'}));
+  const drawnHint = hintSet.has(S.drawn) && !hintUsed.has(S.drawn);
+  rack.appendChild(tileEl(S.drawn,{drawn:true, hint:drawnHint, onpick:onPick}));
+}
+
+function onPick(tile){
+  if(S.phase!=='choose') return;
+  const full=[...S.hand, S.drawn];
+  const c17=counts(full);
+  const ev=evaluate17(c17);
+  const chosen=infoForDiscard(c17, tile);
+  const best=ev.best;
+  const isOptimal = (chosen.sh===ev.minSh && chosen.uke===infoForDiscard(c17,best.tile).uke);
+  const sameClose = chosen.sh===ev.minSh;
+
+  // update stats
+  S.total++;
+  if(isOptimal){ S.correct++; S.streak++; } else { S.streak=0; }
+
+  // remove the discarded tile from hand -> back to 16
+  const arr=[...full]; arr.splice(arr.indexOf(tile),1); S.hand=arr.sort((a,b)=>a-b); S.drawn=null;
+  S.phase='feedback';
+
+  // build feedback
+  let cls,tag,head;
+  if(isOptimal){ cls='v-opt'; tag='最佳'; head='Optimal'; }
+  else if(sameClose){ cls='v-ok'; tag='不錯'; head='Solid — not the widest'; }
+  else { cls='v-bad'; tag='退步'; head='Costly — a step backwards'; }
+
+  const yourName=tileName(tile), bestName=tileName(best.tile);
+  let line;
+  if(isOptimal){
+    line = 'That keeps your hand as close and as wide as it gets.';
+  } else if(sameClose){
+    line = 'Equally close, but discarding <span class="han">'+bestName+'</span> leaves more winning tiles live — and the wider your wait, the sooner one lands.';
+  } else {
+    line = 'This pushes you further from ready. Discarding <span class="han">'+bestName+'</span> protected your strongest shape instead.';
+  }
+  const alt = ev.bestTiles.length>1 ? '<div class="fb-row"><span>Also optimal: '+ev.bestTiles.filter(t=>t!==best.tile).map(t=>'<b class="han" style="font-family:\'Noto Sans TC\'">'+tileName(t)+'</b>').join(', ')+'</span></div>' : '';
+
+  document.getElementById('feedback').innerHTML =
+    '<div class="feedback">'+
+      '<div class="verdict '+cls+'"><span class="tag">'+tag+'</span><span>'+head+'</span></div>'+
+      '<div class="fb-body">You discarded <span class="pill"><span class="han">'+yourName+'</span></span> · best was <span class="pill"><span class="han">'+bestName+'</span></span>. '+line+'</div>'+
+      '<div class="fb-row">'+
+        '<span>Your discard → <b>'+labelSh(chosen.sh)+'</b>, <b>'+chosen.uke+'</b> tiles help</span>'+
+        '<span>Best discard → <b>'+labelSh(best.sh)+'</b>, <b>'+best.uke+'</b> tiles help</span>'+
+      '</div>'+ alt +
+      '<div class="fb-actions">'+
+        '<button class="btn btn-primary" onclick="drawNext()">Draw next tile ▶</button>'+
+        '<button class="btn btn-ghost" onclick="newHand()">New hand</button>'+
+      '</div>'+
+    '</div>';
+  // re-render rack showing the discard greyed
+  renderAfterPick(tile);
+  // refresh stats display
+  document.getElementById('accuracy').textContent = S.total? Math.round(100*S.correct/S.total)+'%' : '—';
+  document.getElementById('streak').textContent = S.streak;
+  document.getElementById('hands').textContent = S.total;
+}
+
+function labelSh(sh){ return sh<=0 ? 'Ready' : sh+' away'; }
+
+function renderAfterPick(tile){
+  const rack=document.getElementById('rack');
+  rack.classList.remove('choose');
+  rack.innerHTML='';
+  S.hand.forEach(i=>rack.appendChild(tileEl(i)));
+}
+
+/* coach toggle */
+const coachEl=document.getElementById('coach');
+function toggleCoach(){
+  S.coach=!S.coach;
+  coachEl.classList.toggle('on',S.coach);
+  coachEl.setAttribute('aria-checked', S.coach);
+  if(S.phase==='choose') render();
+}
+coachEl.addEventListener('click',toggleCoach);
+coachEl.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggleCoach(); }});
+
+newHand();
+</script>
+</body>
+</html>
